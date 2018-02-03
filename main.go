@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -11,6 +12,13 @@ import (
 	"time"
 )
 
+var wg sync.WaitGroup
+var resultChan = make(chan ec2.SpotPrice)
+var lowestSeen ec2.SpotPrice
+var searchWindows = flag.Bool("windows", false, "search for Windows pricing")
+var searchString = []*string{aws.String("Linux/UNIX (Amazon VPC)")}
+var verbose = flag.Bool("verbose", false, "produce verbose output")
+
 func parseTime(layout, value string) *time.Time {
 	t, err := time.Parse(layout, value)
 	if err != nil {
@@ -18,10 +26,6 @@ func parseTime(layout, value string) *time.Time {
 	}
 	return &t
 }
-
-var wg sync.WaitGroup
-var resultChan = make(chan ec2.SpotPrice)
-var lowestSeen ec2.SpotPrice
 
 func determinePrice() {
 	for {
@@ -62,9 +66,7 @@ func getPrices(region string) {
 		InstanceTypes: []*string{
 			aws.String("p3.2xlarge"),
 		},
-		ProductDescriptions: []*string{
-			aws.String("Linux/UNIX (Amazon VPC)"),
-		},
+		ProductDescriptions: searchString,
 	}
 
 	result, err := svc.DescribeSpotPriceHistory(input)
@@ -86,7 +88,9 @@ func getPrices(region string) {
 	seen := make(map[string]bool)
 	for _, val := range result.SpotPriceHistory {
 		if seen[*val.AvailabilityZone] == false {
-			fmt.Println(val)
+			if *verbose {
+				fmt.Println(val)
+			}
 			resultChan <- *val
 			seen[*val.AvailabilityZone] = true
 		}
@@ -95,6 +99,12 @@ func getPrices(region string) {
 }
 
 func main() {
+	flag.Parse()
+
+	if *searchWindows == true {
+		searchString = []*string{aws.String("Windows (Amazon VPC)")}
+	}
+
 	regionList := []string{"us-west-1", "us-west-2", "us-east-1", "us-east-2", "ca-central-1",
 		"sa-east-1",
 		"eu-west-1", "eu-west-2", "eu-west-3", "eu-central-1",
@@ -106,5 +116,5 @@ func main() {
 		go getPrices(r)
 	}
 	wg.Wait()
-	fmt.Println(lowestSeen)
+	fmt.Println("Lowest price:", lowestSeen)
 }
