@@ -7,6 +7,7 @@ import (
 	//"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"sync"
 	"time"
 )
 
@@ -18,7 +19,11 @@ func parseTime(layout, value string) *time.Time {
 	return &t
 }
 
-func getPrices(region string)  {
+var wg sync.WaitGroup
+
+func getPrices(region string) {
+	defer wg.Done()
+	fmt.Println(region)
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(region),
 		//Credentials: credentials.NewStaticCredentials("ASIAI4JRMRV6S73MHELQ", "bmDL5BjEVWnRJHIY0szP7HRn0gbkgQfCKrGcWZQG", "FQoDYXdzEFYaDJ9V/+srTMy5OD4jcSKsAX26PMwtKZvHuYWEE43Kii0hTHYrIM/DEE9jOqoihpZG5caSDECFDRct9ar/+Fw7Kq8MlEtb8QKTHvNbFH0EDgZxEF9ggiDKOWFWKoI/GAC2Fu513ZWFuSS3+QbSCxNR3u5bYqFlHcghMqbQtF+lSy13JBkiYaE2IBDgvt/UPsNsy5CqRlBC7Ni+RK8Rcn70ux9IokTPCDfhMb108klrstM9v4Is09ARCvC13kso44HV0wU="),
@@ -65,17 +70,23 @@ func getPrices(region string)  {
 	for _, val := range result.SpotPriceHistory {
 		if seen[*val.AvailabilityZone] == false {
 			fmt.Println(val)
-			seen[*val.AvailabilityZone]  = true
+			seen[*val.AvailabilityZone] = true
 		}
 	}
 
 }
 
-func main(){
-	regionList := []string{"us-east-1","us-east-2","us-west-2","eu-west-1","ap-northeast-1","ap-northeast-2"}
-	fmt.Println(regionList)
-	for _,r := range regionList {
-		fmt.Println(r)
-		getPrices(r)
+func main() {
+	regionList := []string{"us-west-1", "us-west-2", "us-east-1", "us-east-2", "ca-central-1",
+		"sa-east-1",
+		"eu-west-1", "eu-west-2", "eu-west-3", "eu-central-1",
+		"ap-south-1", "ap-northeast-1", "ap-northeast-2", "ap-southeast-1", "ap-southeast-2"}
+	//fmt.Println(regionList)
+
+	for _, r := range regionList {
+		//fmt.Println(r)
+		wg.Add(1)
+		go getPrices(r)
 	}
+	wg.Wait()
 }
