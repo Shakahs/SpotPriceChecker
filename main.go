@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"strconv"
@@ -53,9 +54,12 @@ func determinePrice() {
 
 func getPrices(region string) {
 	defer wg.Done()
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(region),
-	},
+
+	sess, err := session.NewSession(
+		&aws.Config{
+			Region:      aws.String(region),
+			Credentials: credentials.NewSharedCredentials("", "SpotPriceChecker"),
+		},
 	)
 	if err != nil {
 		fmt.Println(err)
