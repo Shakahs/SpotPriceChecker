@@ -18,6 +18,7 @@ var resultChan = make(chan ec2.SpotPrice)
 var lowestSeen ec2.SpotPrice
 var searchWindows = flag.Bool("windows", false, "search for Windows pricing")
 var searchString = []*string{aws.String("Linux/UNIX (Amazon VPC)")}
+var searchInstanceType = flag.String("type", "p3.2xlarge", "instance type to search for")
 var verbose = flag.Bool("verbose", false, "produce verbose output")
 
 func parseTime(layout, value string) *time.Time {
@@ -68,7 +69,7 @@ func getPrices(region string) {
 	svc := ec2.New(sess)
 	input := &ec2.DescribeSpotPriceHistoryInput{
 		InstanceTypes: []*string{
-			aws.String("p3.2xlarge"),
+			aws.String(*searchInstanceType),
 		},
 		ProductDescriptions: searchString,
 	}
